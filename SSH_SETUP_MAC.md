@@ -67,7 +67,11 @@ eval "$(ssh-agent -s)"
 Check whether the config file exists:
 
 ```bash
-cat ~/.ssh/config
+if [ -f ~/.ssh/config ]; then
+  cat ~/.ssh/config
+else
+  echo "~/.ssh/config does not exist yet; you'll create it in the next step."
+fi
 ```
 
 If the file does not exist or does not contain a `github.com` entry, create/update it:
