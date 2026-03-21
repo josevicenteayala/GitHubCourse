@@ -131,7 +131,7 @@ ssh -T git@github.com
 Expected output (the username will be your own):
 
 ```
-Hi josevicenteayala! You've successfully authenticated, but GitHub does not provide shell access.
+Hi <username>! You've successfully authenticated, but GitHub does not provide shell access.
 ```
 
 If you see a warning about an unrecognized host, type `yes` to add GitHub to your known hosts.
