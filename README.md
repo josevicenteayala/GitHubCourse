@@ -38,7 +38,13 @@ Each step folder contains:
 
 ## Quick Start
 
-1. Clone repository and open in VS Code.
+> **First time on macOS?** Follow the [SSH Credentials Setup Guide](SSH_SETUP_MAC.md) to generate your SSH key and add it to GitHub before cloning.
+
+1. Clone repository (SSH) and open in VS Code.
+
+   ```bash
+   git clone git@github.com:josevicenteayala/GitHubCourse.git
+   ```
 2. Ensure Python 3.10+ is available.
 3. Run all checks:
 
