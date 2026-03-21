@@ -62,7 +62,7 @@ Start the ssh-agent in the background:
 eval "$(ssh-agent -s)"
 ```
 
-### Configure `~/.ssh/config` (macOS Sierra 10.12.2 and later)
+### Configure `~/.ssh/config` (macOS 10.15 (Catalina) or later)
 
 Check whether the config file exists:
 
