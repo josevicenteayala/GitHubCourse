@@ -77,12 +77,14 @@ fi
 If the file does not exist or does not contain a `github.com` entry, create/update it:
 
 ```bash
-cat >> ~/.ssh/config << 'EOF'
+if ! grep -q "Host github.com" ~/.ssh/config 2>/dev/null; then
+  cat >> ~/.ssh/config << 'EOF'
 Host github.com
   AddKeysToAgent yes
   UseKeychain yes
   IdentityFile ~/.ssh/id_ed25519
 EOF
+fi
 ```
 
 > **Note:** `UseKeychain yes` stores the passphrase in the macOS Keychain so you only need to enter it once per login session.
