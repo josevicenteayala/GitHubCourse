@@ -22,7 +22,7 @@ ls -al ~/.ssh
 
 Look for files named `id_ed25519` / `id_ed25519.pub` (or `id_rsa` / `id_rsa.pub`).
 
-- **If you see a key pair you want to reuse**, skip to [Step 3](#step-3--add-your-ssh-key-to-the-ssh-agent).
+- **If you see a key pair you want to reuse**, skip to [Step 3](#step-3--add-your-ssh-key-to-the-ssh-agent). In later commands, replace `~/.ssh/id_ed25519` with the path to your existing key file (for example, `~/.ssh/id_rsa`) wherever it appears.
 - **If the directory is empty or does not exist**, continue to Step 2.
 
 ---
