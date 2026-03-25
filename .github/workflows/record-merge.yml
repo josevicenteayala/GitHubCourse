@@ -1,0 +1,81 @@
+name: Record Merged PR
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  record:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install psycopg2-binary gspread google-auth
+
+      - name: Detect step from labels or branch
+        id: detect
+        env:
+          LABELS_JSON: ${{ toJson(github.event.pull_request.labels.*.name) }}
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          STEP=$(echo "$LABELS_JSON" | python3 -c "
+          import json, sys, re
+          labels = json.load(sys.stdin)
+          for label in labels:
+              m = re.match(r'^(step-\d+)', label)
+              if m:
+                  print(m.group(1))
+                  sys.exit(0)
+          " 2>/dev/null || true)
+
+          if [ -z "$STEP" ]; then
+            STEP=$(echo "$BRANCH" | grep -oE '^step-[0-9]+' || true)
+          fi
+
+          echo "step=${STEP:-unknown}" >> "$GITHUB_OUTPUT"
+
+      - name: Run evaluation for status
+        id: evaluate
+        continue-on-error: true
+        run: |
+          STEP="${{ steps.detect.outputs.step }}"
+          if [ "$STEP" = "unknown" ]; then
+            echo "status=unknown" >> "$GITHUB_OUTPUT"
+          else
+            python3 scripts/evaluate.py --step "$STEP" > /dev/null 2>&1 && \
+              echo "status=pass" >> "$GITHUB_OUTPUT" || \
+              echo "status=fail" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip recording (step not completed)
+        if: steps.evaluate.outputs.status != 'pass'
+        run: echo "⏭️ Step not completed (status=${{ steps.evaluate.outputs.status }}). Skipping DB recording."
+
+      - name: Record to storage
+        if: steps.evaluate.outputs.status == 'pass'
+        env:
+          STORAGE_BACKEND: ${{ vars.STORAGE_BACKEND || 'sql' }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          STORAGE_CREDENTIALS: ${{ secrets.STORAGE_CREDENTIALS }}
+          SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
+        run: |
+          python3 scripts/record_to_db.py \
+            --pr-id "${{ github.event.pull_request.number }}" \
+            --title "${{ github.event.pull_request.title }}" \
+            --author "${{ github.event.pull_request.user.login }}" \
+            --step "${{ steps.detect.outputs.step }}" \
+            --status "${{ steps.evaluate.outputs.status }}" \
+            --merged-at "${{ github.event.pull_request.merged_at }}"
