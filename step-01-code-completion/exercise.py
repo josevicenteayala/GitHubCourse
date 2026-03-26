@@ -14,6 +14,7 @@ def normalize_username(name: str) -> str:
     normalized = name.strip().lower()
     normalized = re.sub(r"\s+", "_", normalized)
     normalized = re.sub(r"[^a-z0-9_]", "", normalized)
+    normalized = re.sub(r"_+", "_", normalized)
     return normalized.strip("_")
 
 def build_slug(title: str) -> str:
