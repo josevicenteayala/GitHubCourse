@@ -7,15 +7,13 @@ def normalize_username(name: str) -> str:
     Rules:
     - Trim outer whitespace.
     - Convert to lowercase.
-    - Replace spaces with underscores.
+    - Replace one or more spaces with a single underscore.
     - Remove any character that is not a-z, 0-9, or underscore.
-    - Collapse repeated underscores into one underscore.
     - Strip leading/trailing underscores.
     """
     normalized = name.strip().lower()
-    normalized = normalized.replace(" ", "_")
+    normalized = re.sub(r"\s+", "_", normalized)
     normalized = re.sub(r"[^a-z0-9_]", "", normalized)
-    normalized = re.sub(r"_+", "_", normalized)
     return normalized.strip("_")
 
 def build_slug(title: str) -> str:
