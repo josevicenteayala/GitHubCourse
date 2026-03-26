@@ -79,6 +79,16 @@ class TestStep01(unittest.TestCase):
             "start-middle-end",
             "Missing edge case: strip leading/trailing '-'.",
         )
+        self.assertEqual(
+            self.module.build_slug("A___---...+++   ###B"),
+            "a-b",
+            "Missing edge case: collapse any mixed run of non-alphanumeric separators into a single '-'.",
+        )
+        self.assertEqual(
+            self.module.build_slug("---___...+++   ###"),
+            "",
+            "Missing edge case: return an empty slug when input is only mixed non-alphanumeric separators.",
+        )
 
     def test_build_slug_type_error(self):
         with self.assertRaisesRegex(

@@ -23,6 +23,11 @@ on:
         description: "Head commit SHA for diff"
         required: true
         type: string
+      eval_output:
+        description: "Full evaluation output from evaluate.py"
+        required: false
+        type: string
+        default: ""
     outputs:
       verdict:
         description: "AI review verdict: PASS or FAIL"
@@ -89,6 +94,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MODELS_API_KEY: ${{ secrets.MODELS_API_KEY }}
+          EVAL_OUTPUT: ${{ inputs.eval_output }}
         run: |
           IFS=',' read -ra STEPS <<< "${{ inputs.step }}"
           FINAL_VERDICT="PASS"

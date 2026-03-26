@@ -44,7 +44,7 @@ def load_prompt(step_id: str) -> str:
     return "\n\n---\n\n".join(parts)
 
 
-def call_llm(system_prompt: str, diff_content: str) -> str:
+def call_llm(system_prompt: str, diff_content: str, eval_output: str = "") -> str:
     """Send the prompt + diff to the LLM and return the response text."""
     api_key = os.environ.get("MODELS_API_KEY", "")
     if not api_key:
@@ -56,10 +56,19 @@ def call_llm(system_prompt: str, diff_content: str) -> str:
 
     client = OpenAI(api_key=api_key)
 
+    user_message = f"Review the following code diff:\n\n```diff\n{diff_content}\n```"
+    if eval_output:
+        user_message += (
+            f"\n\n---\n\n"
+            f"The automated test suite produced the following evaluation output:\n\n"
+            f"```\n{eval_output}\n```\n\n"
+            f"Use this context to inform your review."
+        )
+
     response = client.responses.create(
         model=DEFAULT_MODEL,
         instructions=system_prompt,
-        input=f"Review the following code diff:\n\n```diff\n{diff_content}\n```",
+        input=user_message,
         temperature=0.3,
         max_output_tokens=2000,
     )
@@ -127,9 +136,10 @@ def main() -> int:
         return 0
 
     system_prompt = load_prompt(step_id)
+    eval_output = os.environ.get("EVAL_OUTPUT", "")
 
     try:
-        review = call_llm(system_prompt, diff_content)
+        review = call_llm(system_prompt, diff_content, eval_output)
     except RuntimeError as exc:
         print(f"Skipping AI review: {exc}", file=sys.stderr)
         return 0

@@ -27,3 +27,4 @@ Evaluate whether `copilot-evidence.md` contains relevant information. Don't be v
 - The student is learning to use GitHub Copilot through practical exercises.
 - Each step focuses on a specific Copilot capability.
 - The diff below shows the student's changes. Evaluate ONLY the changed code.
+- The Output from eval runs the student's code against test cases that covers the criteria. Use this information in your assessment. 
