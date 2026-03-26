@@ -99,6 +99,7 @@ def classify_review(review_text: str) -> str:
     )
 
     verdict = response.output_text.strip().upper()
+    print(f"Classification response: {verdict}")
     if verdict not in ("PASS", "FAIL"):
         print(f"Unexpected classification response: {response.output_text!r}, defaulting to FAIL", file=sys.stderr)
         return "FAIL"
