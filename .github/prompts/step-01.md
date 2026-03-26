@@ -16,4 +16,4 @@ Inline code completion
    - Returns empty string for all-punctuation input
 3. Both functions handle edge cases (empty strings, special characters, multiple spaces).
 4. Code is clean and Pythonic (e.g., uses `re` module or string methods appropriately).
-5. `copilot-evidence.md` contains the word "prompt" and shows real interaction with Copilot inline completion.
+5. `copilot-evidence.md` contains the word "prompt" and shows some reasoning for accepting/rejecting suggestions.
