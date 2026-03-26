@@ -15,6 +15,7 @@ import urllib.error
 from pathlib import Path
 
 from openai import OpenAI
+import openai
 
 ROOT = Path(__file__).resolve().parent.parent
 PROMPTS_DIR = ROOT / ".github" / "prompts"
@@ -54,20 +55,17 @@ def call_llm(system_prompt: str, diff_content: str) -> str:
 
     client = OpenAI(api_key=api_key)
 
-    response = client.chat.completions.create(
+    response = client.responses.create(
         model=DEFAULT_MODEL,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {
-                "role": "user",
-                "content": f"Review the following code diff:\n\n```diff\n{diff_content}\n```",
-            },
-        ],
+        instructions=system_prompt,
+        input=f"Review the following code diff:\n\n```diff\n{diff_content}\n```",
         temperature=0.3,
-        max_tokens=2000,
+        max_output_tokens=2000,
     )
 
-    return response.choices[0].message.content
+    print(f"LLM response received (id: {response.id}, model: {response.model})")
+    print(f"Response content:\n{response.output_text}")
+    return response.output_text
 
 
 def post_review_comment(repo: str, pr_number: str, body: str) -> None:
