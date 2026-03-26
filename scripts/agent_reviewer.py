@@ -21,6 +21,7 @@ ROOT = Path(__file__).resolve().parent.parent
 PROMPTS_DIR = ROOT / ".github" / "prompts"
 
 DEFAULT_MODEL = "gpt-5.4-mini"
+VEREDICT_MODEL = "gpt-5.4-nano"  # can be different from review model if desired
 MAX_DIFF_CHARS = 60_000  # truncate very large diffs to stay within context
 
 
@@ -77,7 +78,7 @@ def classify_review(review_text: str) -> str:
     client = OpenAI(api_key=api_key)
 
     response = client.responses.create(
-        model=DEFAULT_MODEL,
+        model=VEREDICT_MODEL,
         instructions=(
             "You are a strict classifier. Given a code review of a student's pull request, "
             "determine whether the student's code meets ALL the criteria. "

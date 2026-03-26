@@ -9,6 +9,9 @@ on:
       status:
         description: "Evaluation result: pass or fail"
         value: ${{ jobs.evaluate.outputs.status }}
+      eval_output:
+        description: "Full evaluation output text"
+        value: ${{ jobs.evaluate.outputs.eval_output }}
 
 jobs:
   evaluate:
@@ -16,6 +19,7 @@ jobs:
     outputs:
       step: ${{ steps.detect.outputs.step }}
       status: ${{ steps.eval.outputs.status }}
+      eval_output: ${{ steps.eval.outputs.eval_output }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -56,16 +60,25 @@ jobs:
         run: |
           set +e
           if [ -n "${{ steps.detect.outputs.step }}" ]; then
-            python3 scripts/evaluate.py --step "${{ steps.detect.outputs.step }}"
+            OUTPUT=$(python3 scripts/evaluate.py --step "${{ steps.detect.outputs.step }}" 2>&1)
           else
-            python3 scripts/evaluate.py
+            OUTPUT=$(python3 scripts/evaluate.py 2>&1)
           fi
           EXIT_CODE=$?
           set -e
+
+          echo "$OUTPUT"
 
           if [ "$EXIT_CODE" = "0" ]; then
             echo "status=pass" >> "$GITHUB_OUTPUT"
           else
             echo "status=fail" >> "$GITHUB_OUTPUT"
           fi
+
+          # Store output for comment posting (multi-line safe)
+          {
+            echo "eval_output<<EOF"
+            echo "$OUTPUT"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
           exit $EXIT_CODE

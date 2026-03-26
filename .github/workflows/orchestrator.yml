@@ -14,9 +14,54 @@ jobs:
     uses: ./.github/workflows/evaluate.yml
     secrets: inherit
 
-  # ── Step 2: Post evaluation results & run AI review ────────────────────
-  ai-review:
+  # ── Post evaluation results as PR comment ──────────────────────────────
+  post-eval-results:
     needs: evaluate
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Post evaluation comment
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          STEP="${{ needs.evaluate.outputs.step }}"
+          STATUS="${{ needs.evaluate.outputs.status }}"
+
+          if [ "$STATUS" = "pass" ]; then
+            HEADER="✅ **All checks passed for \`$STEP\`**"
+          else
+            HEADER="❌ **Some checks failed for \`$STEP\`**"
+          fi
+
+          python3 scripts/post_comment.py \
+            --repo "${{ github.repository }}" \
+            --pr "${{ github.event.pull_request.number }}" \
+            --marker "ai-review-evaluation" \
+            --body "$HEADER
+
+          <details>
+          <summary>Evaluation Output</summary>
+
+          \`\`\`
+          ${{ needs.evaluate.outputs.eval_output }}
+          \`\`\`
+
+          </details>"
+
+  # ── Step 2: Run AI review ──────────────────────────────────────────────
+  ai-review:
+    needs: [evaluate, post-eval-results]
     if: needs.evaluate.outputs.status == 'pass'
     uses: ./.github/workflows/ai-review.yml
     with:
