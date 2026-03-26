@@ -4,7 +4,11 @@
 
 ## Prompt 1
 
-Normalize a string to be a valid Python variable name:
+Normalize a string to be a valid Python variable name
+
+## Prompt 2
+
+Generate a slug from a string suitable for URLs
 
 ## Why you accepted/rejected the suggestion
 
