@@ -11,10 +11,40 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Detect step
+        id: detect
+        env:
+          PR_LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
+        run: |
+          STEP=""
+
+          # 1. Try PR labels (e.g. "step-01")
+          if [ "$PR_LABELS" != "null" ] && [ "$PR_LABELS" != "[]" ]; then
+            STEP=$(echo "$PR_LABELS" | grep -oE 'step-[0-9]{2}' | head -n1)
+          fi
+
+          # 2. Fall back to branch name (e.g. "step-03/my-feature")
+          if [ -z "$STEP" ]; then
+            BRANCH="${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
+            STEP=$(echo "$BRANCH" | grep -oE '^step-[0-9]{2}' || true)
+          fi
+
+          if [ -n "$STEP" ]; then
+            echo "step=$STEP" >> "$GITHUB_OUTPUT"
+            echo "Detected step: $STEP"
+          else
+            echo "No step detected — will evaluate all steps"
+          fi
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Run evaluator
-        run: python3 scripts/evaluate.py
+        run: |
+          if [ -n "${{ steps.detect.outputs.step }}" ]; then
+            python3 scripts/evaluate.py --step "${{ steps.detect.outputs.step }}"
+          else
+            python3 scripts/evaluate.py
+          fi

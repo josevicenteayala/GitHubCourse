@@ -1,6 +1,6 @@
 # Copilot Evidence — Step 01
 
-Replace all placeholders.
+
 
 ## Prompt 1
 
