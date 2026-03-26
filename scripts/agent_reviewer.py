@@ -9,19 +9,18 @@ Environment variables:
     MODELS_API_KEY  — API key for GitHub Models (or compatible endpoint)
     GH_TOKEN        — GitHub token for posting comments (fallback: GITHUB_TOKEN)
 """
-import json
 import os
 import sys
-import urllib.request
 import urllib.error
 from pathlib import Path
+
+from openai import OpenAI
+import openai
 
 ROOT = Path(__file__).resolve().parent.parent
 PROMPTS_DIR = ROOT / ".github" / "prompts"
 
-# GitHub Models endpoint (OpenAI-compatible chat completions)
-MODELS_URL = "https://models.github.ai/inference/chat/completions"
-DEFAULT_MODEL = "openai/gpt-4o"
+DEFAULT_MODEL = "gpt-5.4-mini"
 MAX_DIFF_CHARS = 60_000  # truncate very large diffs to stay within context
 
 
@@ -54,31 +53,22 @@ def call_llm(system_prompt: str, diff_content: str) -> str:
     if len(diff_content) > MAX_DIFF_CHARS:
         diff_content = diff_content[:MAX_DIFF_CHARS] + "\n\n... (diff truncated)"
 
-    payload = {
-        "model": DEFAULT_MODEL,
-        "messages": [
+    client = OpenAI(api_key=api_key)
+
+    response = client.chat.completions.create(
+        model=DEFAULT_MODEL,
+        messages=[
             {"role": "system", "content": system_prompt},
             {
                 "role": "user",
                 "content": f"Review the following code diff:\n\n```diff\n{diff_content}\n```",
             },
         ],
-        "temperature": 0.3,
-        "max_tokens": 2000,
-    }
+        temperature=0.3,
+        max_tokens=2000,
+    )
 
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {api_key}",
-    }
-
-    data = json.dumps(payload).encode()
-    req = urllib.request.Request(MODELS_URL, data=data, headers=headers, method="POST")
-
-    with urllib.request.urlopen(req, timeout=60) as resp:
-        result = json.loads(resp.read().decode())
-
-    return result["choices"][0]["message"]["content"]
+    return response.choices[0].message.content
 
 
 def post_review_comment(repo: str, pr_number: str, body: str) -> None:
@@ -118,8 +108,8 @@ def main() -> int:
     except RuntimeError as exc:
         print(f"Skipping AI review: {exc}", file=sys.stderr)
         return 0
-    except urllib.error.HTTPError as exc:
-        print(f"LLM API error: {exc.code} {exc.reason}", file=sys.stderr)
+    except openai.APIError as exc:
+        print(f"LLM API error: {exc.status_code} {exc.message}", file=sys.stderr)
         return 0
 
     comment_body = f"🤖 **AI Review for `{step_id}`**\n\n{review}"
