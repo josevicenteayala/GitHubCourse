@@ -161,7 +161,6 @@ def main() -> int:
     args = parse_args()
     targets = [config for config in STEPS if not args.step or config.id == args.step]
 
-    overall_ok = True
     print("== GitHub Copilot Course Evaluation ==")
 
     for config in targets:
@@ -171,10 +170,12 @@ def main() -> int:
         print(f"Status: {status}")
         for msg in messages:
             print(f"- {msg}")
-        overall_ok = overall_ok and ok
+        if not ok:
+            print("\nSummary: FAIL")
+            return 1
 
-    print("\nSummary:", "PASS" if overall_ok else "FAIL")
-    return 0 if overall_ok else 1
+    print("\nSummary: PASS")
+    return 0
 
 
 if __name__ == "__main__":
