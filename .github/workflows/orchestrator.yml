@@ -1,0 +1,41 @@
+name: PR Pipeline
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  # ── Step 1: Run unit tests & evidence checks ──────────────────────────
+  evaluate:
+    uses: ./.github/workflows/evaluate.yml
+    secrets: inherit
+
+  # ── Step 2: Post evaluation results & run AI review ────────────────────
+  ai-review:
+    needs: evaluate
+    if: needs.evaluate.outputs.status == 'pass'
+    uses: ./.github/workflows/ai-review.yml
+    with:
+      step: ${{ needs.evaluate.outputs.step }}
+      pr_number: ${{ github.event.pull_request.number }}
+      repo: ${{ github.repository }}
+      base_ref: ${{ github.base_ref }}
+      head_sha: ${{ github.event.pull_request.head.sha }}
+    secrets: inherit
+
+  # ── Step 3: Record approved PR to persistent storage ───────────────────
+  record:
+    needs: [evaluate, ai-review]
+    if: needs.ai-review.outputs.verdict == 'PASS'
+    uses: ./.github/workflows/record-merge.yml
+    with:
+      pr_id: ${{ github.event.pull_request.number }}
+      title: ${{ github.event.pull_request.title }}
+      author: ${{ github.event.pull_request.user.login }}
+      step: ${{ needs.evaluate.outputs.step }}
+      status: ${{ needs.evaluate.outputs.status }}
+    secrets: inherit
