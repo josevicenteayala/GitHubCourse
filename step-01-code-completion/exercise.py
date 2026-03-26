@@ -27,4 +27,6 @@ def build_slug(title: str) -> str:
     - Replace any sequence of non-alphanumeric characters with a single '-'.
     - Strip leading/trailing '-'.
     """
-    return re.sub(r"-+", "-", re.sub(r"[^a-z0-9]+", "-", title.lower())).strip("-")
+    # Extract alphanumeric word chunks, then join with single hyphens.
+    words = re.findall(r"[a-z0-9]+", title.lower())
+    return "-".join(words)
