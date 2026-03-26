@@ -60,6 +60,10 @@ ON CONFLICT (pr_id, step) DO UPDATE SET
     recorded_at   = EXCLUDED.recorded_at;
 """
 
+QUERY_SQL = """
+SELECT review_status FROM pr_records WHERE pr_id = %s AND step = %s;
+"""
+
 
 def record_to_sql(
     pr_id: str,
@@ -91,6 +95,25 @@ def record_to_sql(
         conn.close()
 
     print(f"Recorded PR #{pr_id} ({step}) to database")
+
+
+def query_sql(pr_id: str, step: str) -> str:
+    """Query the current review status from PostgreSQL."""
+    import psycopg2  # type: ignore[import-untyped]
+
+    database_url = os.environ.get("DATABASE_URL", "")
+    if not database_url:
+        raise RuntimeError("DATABASE_URL environment variable is not set")
+
+    conn = psycopg2.connect(database_url)
+    try:
+        with conn.cursor() as cur:
+            cur.execute(CREATE_TABLE_SQL)
+            cur.execute(QUERY_SQL, (pr_id, step))
+            row = cur.fetchone()
+            return row[0].lower() if row else ""
+    finally:
+        conn.close()
 
 
 # ---------------------------------------------------------------------------
@@ -174,6 +197,22 @@ def record_to_sheets(
     print(f"Recorded PR #{pr_id} ({step}) to spreadsheet")
 
 
+def query_sheets(pr_id: str, step: str) -> str:
+    """Query the current review status from Google Sheets."""
+    spreadsheet_id = os.environ.get("SPREADSHEET_ID", "")
+    if not spreadsheet_id:
+        raise RuntimeError("SPREADSHEET_ID environment variable is not set")
+
+    client = _get_gspread_client()
+    sheet = client.open_by_key(spreadsheet_id).sheet1
+
+    all_values = sheet.get_all_values()
+    for row in all_values[1:]:  # skip header
+        if len(row) >= 5 and row[0] == pr_id and row[3] == step:
+            return row[4].lower()  # review_status column
+    return ""
+
+
 # ---------------------------------------------------------------------------
 # Backend dispatch
 # ---------------------------------------------------------------------------
@@ -181,6 +220,11 @@ def record_to_sheets(
 BACKENDS = {
     "sql": record_to_sql,
     "sheets": record_to_sheets,
+}
+
+QUERY_BACKENDS = {
+    "sql": query_sql,
+    "sheets": query_sheets,
 }
 
 
@@ -192,13 +236,40 @@ def main() -> int:
         default=os.environ.get("STORAGE_BACKEND", DEFAULT_BACKEND),
         help="Storage backend (default: sql). Override via STORAGE_BACKEND env var.",
     )
+    parser.add_argument("--query", action="store_true",
+                        help="Query existing review status instead of recording")
     parser.add_argument("--pr-id", required=True)
-    parser.add_argument("--title", required=True)
-    parser.add_argument("--author", required=True)
+    parser.add_argument("--title", default="")
+    parser.add_argument("--author", default="")
     parser.add_argument("--step", required=True)
-    parser.add_argument("--status", required=True)
-    parser.add_argument("--approved-at", required=True)
+    parser.add_argument("--status", default="")
+    parser.add_argument("--approved-at", default="")
     args = parser.parse_args()
+
+    # --- Query mode ---
+    if args.query:
+        query_fn = QUERY_BACKENDS[args.backend]
+        steps = [s.strip() for s in args.step.split(",")]
+        statuses = []
+        for step in steps:
+            try:
+                status = query_fn(pr_id=args.pr_id, step=step)
+                statuses.append(status)
+            except Exception as exc:
+                print(f"Query error for {step}: {exc}", file=sys.stderr)
+                statuses.append("")
+
+        if statuses and all(s == "pass" for s in statuses):
+            print("pass")
+        elif any(s == "fail" for s in statuses):
+            print("fail")
+        else:
+            print("")  # no record found
+        return 0
+
+    # --- Record mode ---
+    if not all([args.title, args.author, args.status, args.approved_at]):
+        parser.error("--title, --author, --status, and --approved-at are required when recording")
 
     record_fn = BACKENDS[args.backend]
 
