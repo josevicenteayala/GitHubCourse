@@ -21,7 +21,7 @@ For each criterion, mark ✅ (pass) or ❌ (fail) with a brief explanation.
 Numbered list of actionable improvements (if any).
 
 ### Evidence Check
-Evaluate whether `copilot-evidence.md` contains genuine prompts and reflections (not placeholders).
+Evaluate whether `copilot-evidence.md` contains relevant information. Don't be very strict here — the student may not have perfectly followed instructions, but look for any evidence of interaction with Copilot that supports their learning process.
 
 ## Context
 - The student is learning to use GitHub Copilot through practical exercises.
