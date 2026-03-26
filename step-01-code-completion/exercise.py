@@ -11,6 +11,9 @@ def normalize_username(name: str) -> str:
     - Remove any character that is not a-z, 0-9, or underscore.
     - Strip leading/trailing underscores.
     """
+    if not isinstance(name, str):
+        raise TypeError("name must be a string")
+
     normalized = name.strip().lower()
     normalized = re.sub(r"\s+", "_", normalized)
     normalized = re.sub(r"[^a-z0-9_]", "", normalized)
@@ -26,6 +29,9 @@ def build_slug(title: str) -> str:
     - Replace any sequence of non-alphanumeric characters with a single '-'.
     - Strip leading/trailing '-'.
     """
+    if not isinstance(title, str):
+        raise TypeError("title must be a string")
+
     # Extract alphanumeric word chunks, then join with single hyphens.
     words = re.findall(r"[a-z0-9]+", title.lower())
     return "-".join(words)
