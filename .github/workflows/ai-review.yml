@@ -1,8 +1,32 @@
 name: AI PR Review
 
 on:
-  pull_request:
-    types: [opened, synchronize]
+  workflow_call:
+    inputs:
+      step:
+        description: "Step ID (e.g. step-01)"
+        required: true
+        type: string
+      pr_number:
+        description: "Pull request number"
+        required: true
+        type: number
+      repo:
+        description: "Repository full name (owner/repo)"
+        required: true
+        type: string
+      base_ref:
+        description: "Base branch name for diff"
+        required: true
+        type: string
+      head_sha:
+        description: "Head commit SHA for diff"
+        required: true
+        type: string
+    outputs:
+      verdict:
+        description: "AI review verdict: PASS or FAIL"
+        value: ${{ jobs.review.outputs.verdict }}
 
 permissions:
   contents: read
@@ -11,6 +35,8 @@ permissions:
 jobs:
   review:
     runs-on: ubuntu-latest
+    outputs:
+      verdict: ${{ steps.ai_review.outputs.verdict }}
 
     steps:
       - name: Checkout
@@ -26,114 +52,57 @@ jobs:
       - name: Install dependencies
         run: pip install requests openai
 
-      - name: Detect step from labels or branch
-        id: detect
-        env:
-          LABELS_JSON: ${{ toJson(github.event.pull_request.labels.*.name) }}
-          BRANCH: ${{ github.head_ref }}
-        run: |
-          # Priority 1: Check PR labels for step-XX pattern
-          STEP=$(echo "$LABELS_JSON" | python3 -c "
-          import json, sys, re
-          labels = json.load(sys.stdin)
-          for label in labels:
-              m = re.match(r'^(step-\d+)', label)
-              if m:
-                  print(m.group(1))
-                  sys.exit(0)
-          " 2>/dev/null || true)
-
-          # Priority 2: Extract from branch name
-          if [ -z "$STEP" ]; then
-            STEP=$(echo "$BRANCH" | grep -oE '^step-[0-9]+' || true)
-          fi
-
-          if [ -z "$STEP" ]; then
-            echo "step=" >> "$GITHUB_OUTPUT"
-            echo "detected=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "step=$STEP" >> "$GITHUB_OUTPUT"
-            echo "detected=true" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Post missing-step notice
-        if: steps.detect.outputs.detected == 'false'
+        if: inputs.step == ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           python3 scripts/post_comment.py \
-            --repo "${{ github.repository }}" \
-            --pr "${{ github.event.pull_request.number }}" \
+            --repo "${{ inputs.repo }}" \
+            --pr "${{ inputs.pr_number }}" \
             --marker "ai-review-step-detection" \
             --body "⚠️ **Could not detect a step identifier.**
 
           Please use a branch name starting with \`step-XX\` (e.g. \`step-01/my-feature\`)
           or add a label like \`step-01\` to this PR."
 
-      - name: Run step evaluation
-        if: steps.detect.outputs.detected == 'true'
-        id: evaluate
-        run: |
-          set +e
-          OUTPUT=$(python3 scripts/evaluate.py --step "${{ steps.detect.outputs.step }}" 2>&1)
-          EXIT_CODE=$?
-          set -e
-
-          echo "exit_code=$EXIT_CODE" >> "$GITHUB_OUTPUT"
-
-          # Write output to file for the comment step
-          echo "$OUTPUT" > /tmp/eval_output.txt
-
-      - name: Post evaluation results
-        if: steps.detect.outputs.detected == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          STEP="${{ steps.detect.outputs.step }}"
-          EXIT_CODE="${{ steps.evaluate.outputs.exit_code }}"
-
-          if [ "$EXIT_CODE" = "0" ]; then
-            STATUS="✅ **All checks passed for \`$STEP\`**"
-          else
-            STATUS="❌ **Some checks failed for \`$STEP\`**"
-          fi
-
-          EVAL_OUTPUT=$(cat /tmp/eval_output.txt)
-
-          python3 scripts/post_comment.py \
-            --repo "${{ github.repository }}" \
-            --pr "${{ github.event.pull_request.number }}" \
-            --marker "ai-review-evaluation" \
-            --body "$STATUS
-
-          <details>
-          <summary>Evaluation Output</summary>
-
-          \`\`\`
-          $EVAL_OUTPUT
-          \`\`\`
-
-          </details>"
-
       - name: Generate diff
-        if: steps.detect.outputs.detected == 'true'
+        if: inputs.step != ''
         run: |
-          git diff origin/${{ github.base_ref }}...${{ github.sha }} > /tmp/diff.txt
+          git diff origin/${{ inputs.base_ref }}...${{ inputs.head_sha }} > /tmp/diff.txt
 
       - name: Run AI review agent
-        if: steps.detect.outputs.detected == 'true'
+        if: inputs.step != ''
+        id: ai_review
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MODELS_API_KEY: ${{ secrets.MODELS_API_KEY }}
         run: |
-          python3 scripts/agent_reviewer.py \
+          set +e
+          OUTPUT=$(python3 scripts/agent_reviewer.py \
             /tmp/diff.txt \
-            "${{ steps.detect.outputs.step }}" \
-            "${{ github.event.pull_request.number }}" \
-            "${{ github.repository }}"
+            "${{ inputs.step }}" \
+            "${{ inputs.pr_number }}" \
+            "${{ inputs.repo }}" 2>&1)
+          EXIT_CODE=$?
+          set -e
+
+          echo "$OUTPUT"
+
+          # Parse VERDICT from agent output
+          VERDICT=$(echo "$OUTPUT" | grep -oP '^VERDICT=\K(PASS|FAIL)$' || echo "FAIL")
+          echo "verdict=$VERDICT" >> "$GITHUB_OUTPUT"
+
+          # Exit code 2 = FAIL verdict (not a workflow error)
+          if [ "$EXIT_CODE" = "2" ]; then
+            echo "AI review verdict: FAIL"
+          elif [ "$EXIT_CODE" != "0" ]; then
+            echo "AI review agent error (exit code $EXIT_CODE)"
+            exit 1
+          fi
 
       - name: Request Copilot review
-        if: steps.detect.outputs.detected == 'true'
+        if: inputs.step != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
@@ -141,5 +110,5 @@ jobs:
           gh api \
             --method POST \
             -H "Accept: application/vnd.github+json" \
-            "/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/requested_reviewers" \
+            "/repos/${{ inputs.repo }}/pulls/${{ inputs.pr_number }}/requested_reviewers" \
             -f '{"reviewers":["copilot"]}'  2>/dev/null || echo "Copilot reviewer request skipped (may not be available)"

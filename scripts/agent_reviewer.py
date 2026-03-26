@@ -68,6 +68,33 @@ def call_llm(system_prompt: str, diff_content: str) -> str:
     return response.output_text
 
 
+def classify_review(review_text: str) -> str:
+    """Make a second LLM call to classify the review as PASS or FAIL."""
+    api_key = os.environ.get("MODELS_API_KEY", "")
+    if not api_key:
+        raise RuntimeError("MODELS_API_KEY environment variable is not set")
+
+    client = OpenAI(api_key=api_key)
+
+    response = client.responses.create(
+        model=DEFAULT_MODEL,
+        instructions=(
+            "You are a strict classifier. Given a code review of a student's pull request, "
+            "determine whether the student's code meets ALL the criteria. "
+            "Respond with exactly one word: PASS or FAIL. Nothing else."
+        ),
+        input=f"Classify this code review:\n\n{review_text}",
+        temperature=0.0,
+        max_output_tokens=10,
+    )
+
+    verdict = response.output_text.strip().upper()
+    if verdict not in ("PASS", "FAIL"):
+        print(f"Unexpected classification response: {response.output_text!r}, defaulting to FAIL", file=sys.stderr)
+        return "FAIL"
+    return verdict
+
+
 def post_review_comment(repo: str, pr_number: str, body: str) -> None:
     """Post the AI review as a PR comment via post_comment.py logic."""
     # Import the sibling module
@@ -109,7 +136,18 @@ def main() -> int:
         print(f"LLM API error: {exc.status_code} {exc.message}", file=sys.stderr)
         return 0
 
-    comment_body = f"🤖 **AI Review for `{step_id}`**\n\n{review}"
+    # Classify the review as PASS or FAIL via a second LLM call
+    try:
+        verdict = classify_review(review)
+    except (RuntimeError, openai.APIError) as exc:
+        print(f"Classification failed ({exc}), defaulting to FAIL", file=sys.stderr)
+        verdict = "FAIL"
+
+    verdict_badge = "✅ PASS" if verdict == "PASS" else "❌ FAIL"
+    comment_body = (
+        f"🤖 **AI Review for `{step_id}`**\n\n"
+        f"{review}\n\n---\n\n**Verdict: {verdict_badge}**"
+    )
 
     try:
         post_review_comment(repo, pr_number, comment_body)
@@ -119,7 +157,11 @@ def main() -> int:
         print(body, file=sys.stderr)
         return 1
 
-    return 0
+    # Output verdict for workflow consumption
+    print(f"VERDICT={verdict}")
+
+    # Exit code: 0 = PASS, 2 = FAIL (distinct from 1 = error)
+    return 0 if verdict == "PASS" else 2
 
 
 if __name__ == "__main__":

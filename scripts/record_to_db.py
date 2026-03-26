@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Record merged PR metadata to persistent storage.
+"""Record PR metadata to persistent storage.
 
 Supports two backends selected via --backend (default: sql):
   - sql    — PostgreSQL via DATABASE_URL connection string
@@ -8,11 +8,11 @@ Supports two backends selected via --backend (default: sql):
 Usage:
     python3 scripts/record_to_db.py \\
         --pr-id 42 --title "Step 01 solution" --author "student" \\
-        --step step-01 --status pass --merged-at "2026-03-25T10:00:00Z"
+        --step step-01 --status pass --approved-at "2026-03-25T10:00:00Z"
 
     python3 scripts/record_to_db.py --backend sheets \\
         --pr-id 42 --title "Step 01 solution" --author "student" \\
-        --step step-01 --status pass --merged-at "2026-03-25T10:00:00Z"
+        --step step-01 --status pass --approved-at "2026-03-25T10:00:00Z"
 
 Environment variables:
     STORAGE_BACKEND     — "sql" (default) or "sheets"
@@ -37,20 +37,27 @@ DEFAULT_BACKEND = "sql"
 
 CREATE_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS pr_records (
-    id          SERIAL PRIMARY KEY,
-    pr_id       TEXT NOT NULL,
-    title       TEXT NOT NULL,
-    author      TEXT NOT NULL,
-    step        TEXT NOT NULL,
+    id            SERIAL PRIMARY KEY,
+    pr_id         TEXT NOT NULL,
+    title         TEXT NOT NULL,
+    author        TEXT NOT NULL,
+    step          TEXT NOT NULL,
     review_status TEXT NOT NULL,
-    merged_at   TEXT NOT NULL,
-    recorded_at TEXT NOT NULL
+    approved_at   TEXT NOT NULL,
+    recorded_at   TEXT NOT NULL,
+    UNIQUE (pr_id, step)
 );
 """
 
-INSERT_SQL = """
-INSERT INTO pr_records (pr_id, title, author, step, review_status, merged_at, recorded_at)
-VALUES (%s, %s, %s, %s, %s, %s, %s);
+UPSERT_SQL = """
+INSERT INTO pr_records (pr_id, title, author, step, review_status, approved_at, recorded_at)
+VALUES (%s, %s, %s, %s, %s, %s, %s)
+ON CONFLICT (pr_id, step) DO UPDATE SET
+    title         = EXCLUDED.title,
+    author        = EXCLUDED.author,
+    review_status = EXCLUDED.review_status,
+    approved_at   = EXCLUDED.approved_at,
+    recorded_at   = EXCLUDED.recorded_at;
 """
 
 
@@ -60,9 +67,9 @@ def record_to_sql(
     author: str,
     step: str,
     status: str,
-    merged_at: str,
+    approved_at: str,
 ) -> None:
-    """Insert a row into the PostgreSQL database."""
+    """Upsert a row into the PostgreSQL database."""
     import psycopg2  # type: ignore[import-untyped]
 
     database_url = os.environ.get("DATABASE_URL", "")
@@ -76,8 +83,8 @@ def record_to_sql(
         with conn.cursor() as cur:
             cur.execute(CREATE_TABLE_SQL)
             cur.execute(
-                INSERT_SQL,
-                (pr_id, title, author, step, status, merged_at, recorded_at),
+                UPSERT_SQL,
+                (pr_id, title, author, step, status, approved_at, recorded_at),
             )
         conn.commit()
     finally:
@@ -125,9 +132,9 @@ def record_to_sheets(
     author: str,
     step: str,
     status: str,
-    merged_at: str,
+    approved_at: str,
 ) -> None:
-    """Append a row to the configured Google Sheet."""
+    """Upsert a row in the configured Google Sheet."""
     spreadsheet_id = os.environ.get("SPREADSHEET_ID", "")
     if not spreadsheet_id:
         raise RuntimeError("SPREADSHEET_ID environment variable is not set")
@@ -146,14 +153,23 @@ def record_to_sheets(
         "Author",
         "Step",
         "Review_Status",
-        "Merged_At",
+        "Approved_At",
         "Recorded_At",
     ]
     if not existing_headers:
         sheet.append_row(expected_headers)
 
     recorded_at = datetime.now(timezone.utc).isoformat()
-    row = [pr_id, title, author, step, status, merged_at, recorded_at]
+    row = [pr_id, title, author, step, status, approved_at, recorded_at]
+
+    # Deduplicate: update existing row with same pr_id + step
+    all_values = sheet.get_all_values()
+    for idx, existing_row in enumerate(all_values[1:], start=2):  # skip header
+        if len(existing_row) >= 4 and existing_row[0] == pr_id and existing_row[3] == step:
+            sheet.update(f"A{idx}:G{idx}", [row])
+            print(f"Updated PR #{pr_id} ({step}) in spreadsheet")
+            return
+
     sheet.append_row(row)
     print(f"Recorded PR #{pr_id} ({step}) to spreadsheet")
 
@@ -181,7 +197,7 @@ def main() -> int:
     parser.add_argument("--author", required=True)
     parser.add_argument("--step", required=True)
     parser.add_argument("--status", required=True)
-    parser.add_argument("--merged-at", required=True)
+    parser.add_argument("--approved-at", required=True)
     args = parser.parse_args()
 
     record_fn = BACKENDS[args.backend]
@@ -193,7 +209,7 @@ def main() -> int:
             author=args.author,
             step=args.step,
             status=args.status,
-            merged_at=args.merged_at,
+            approved_at=args.approved_at,
         )
     except RuntimeError as exc:
         print(f"Storage error: {exc}", file=sys.stderr)

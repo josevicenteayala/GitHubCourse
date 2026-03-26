@@ -1,12 +1,21 @@
 name: Evaluate Copilot Course
 
 on:
-  push:
-  pull_request:
+  workflow_call:
+    outputs:
+      step:
+        description: "Detected step ID (e.g. step-01) or empty"
+        value: ${{ jobs.evaluate.outputs.step }}
+      status:
+        description: "Evaluation result: pass or fail"
+        value: ${{ jobs.evaluate.outputs.status }}
 
 jobs:
   evaluate:
     runs-on: ubuntu-latest
+    outputs:
+      step: ${{ steps.detect.outputs.step }}
+      status: ${{ steps.eval.outputs.status }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -33,6 +42,7 @@ jobs:
             echo "step=$STEP" >> "$GITHUB_OUTPUT"
             echo "Detected step: $STEP"
           else
+            echo "step=" >> "$GITHUB_OUTPUT"
             echo "No step detected — will evaluate all steps"
           fi
 
@@ -42,9 +52,20 @@ jobs:
           python-version: '3.11'
 
       - name: Run evaluator
+        id: eval
         run: |
+          set +e
           if [ -n "${{ steps.detect.outputs.step }}" ]; then
             python3 scripts/evaluate.py --step "${{ steps.detect.outputs.step }}"
           else
             python3 scripts/evaluate.py
           fi
+          EXIT_CODE=$?
+          set -e
+
+          if [ "$EXIT_CODE" = "0" ]; then
+            echo "status=pass" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=fail" >> "$GITHUB_OUTPUT"
+          fi
+          exit $EXIT_CODE
