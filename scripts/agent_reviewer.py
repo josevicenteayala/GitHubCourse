@@ -15,7 +15,6 @@ import urllib.error
 from pathlib import Path
 
 from openai import OpenAI
-import openai
 
 ROOT = Path(__file__).resolve().parent.parent
 PROMPTS_DIR = ROOT / ".github" / "prompts"
