@@ -86,7 +86,7 @@ def classify_review(review_text: str) -> str:
         ),
         input=f"Classify this code review:\n\n{review_text}",
         temperature=0.0,
-        max_output_tokens=10,
+        max_output_tokens=16,
     )
 
     verdict = response.output_text.strip().upper()
