@@ -10,6 +10,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -17,4 +19,4 @@ jobs:
           python-version: '3.11'
 
       - name: Run evaluator
-        run: python3 scripts/evaluate.py
+        run: python3 scripts/evaluate.py --auto
