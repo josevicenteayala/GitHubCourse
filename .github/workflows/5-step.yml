@@ -1,6 +1,11 @@
 name: Step 5 # Documentation Generation
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - "step-05-documentation-generation/**"
   pull_request:
     branches:
       - main
@@ -8,6 +13,10 @@ on:
       - closed
     paths:
       - "step-05-documentation-generation/**"
+
+concurrency:
+  group: step-5-progress
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -19,6 +28,7 @@ env:
 
 jobs:
   find_exercise:
+    if: github.event_name == 'push' || github.event.pull_request.merged == true
     name: Find Exercise Issue
     uses: skills/exercise-toolkit/.github/workflows/find-exercise-issue.yml@v0.8.1
 
