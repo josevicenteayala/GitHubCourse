@@ -1,6 +1,11 @@
 name: Step 7 # Debugging Assistance - Last Step
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - "step-07-debugging-assistance/**"
   pull_request:
     branches:
       - main
@@ -8,6 +13,10 @@ on:
       - closed
     paths:
       - "step-07-debugging-assistance/**"
+
+concurrency:
+  group: step-7-progress
+  cancel-in-progress: true
 
 permissions:
   contents: write
@@ -19,6 +28,7 @@ env:
 
 jobs:
   find_exercise:
+    if: github.event_name == 'push' || github.event.pull_request.merged == true
     name: Find Exercise Issue
     uses: skills/exercise-toolkit/.github/workflows/find-exercise-issue.yml@v0.8.1
 
