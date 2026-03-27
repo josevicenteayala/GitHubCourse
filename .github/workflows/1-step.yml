@@ -1,4 +1,4 @@
-name: Step 1 # Code Completion
+name: Step 1
 
 on:
   workflow_dispatch:

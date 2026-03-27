@@ -1,4 +1,4 @@
-name: Step 7 # Debugging Assistance - Last Step
+name: Step 7
 
 on:
   workflow_dispatch:

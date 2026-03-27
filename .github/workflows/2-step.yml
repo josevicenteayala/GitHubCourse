@@ -1,4 +1,4 @@
-name: Step 2 # Chat - /explain, /fix, /generate
+name: Step 2
 
 on:
   workflow_dispatch:

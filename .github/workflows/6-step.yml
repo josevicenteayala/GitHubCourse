@@ -1,4 +1,4 @@
-name: Step 6 # Code Translation
+name: Step 6
 
 on:
   workflow_dispatch:

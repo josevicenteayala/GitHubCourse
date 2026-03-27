@@ -1,4 +1,4 @@
-name: Step 5 # Documentation Generation
+name: Step 5
 
 on:
   workflow_dispatch:
