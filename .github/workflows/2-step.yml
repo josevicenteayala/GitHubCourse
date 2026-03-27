@@ -15,7 +15,7 @@ on:
       - "step-02-chat-explain-fix-generate/**"
 
 concurrency:
-  group: step-2-progress
+  group: step-2-progress-${{ github.event.pull_request.merge_commit_sha || github.sha }}
   cancel-in-progress: true
 
 permissions:

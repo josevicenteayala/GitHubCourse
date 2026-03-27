@@ -15,7 +15,7 @@ on:
       - "step-01-code-completion/**"
 
 concurrency:
-  group: step-1-progress
+  group: step-1-progress-${{ github.event.pull_request.merge_commit_sha || github.sha }}
   cancel-in-progress: true
 
 permissions:

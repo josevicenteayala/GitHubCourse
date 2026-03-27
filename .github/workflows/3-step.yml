@@ -15,7 +15,7 @@ on:
       - "step-03-refactor/**"
 
 concurrency:
-  group: step-3-progress
+  group: step-3-progress-${{ github.event.pull_request.merge_commit_sha || github.sha }}
   cancel-in-progress: true
 
 permissions:

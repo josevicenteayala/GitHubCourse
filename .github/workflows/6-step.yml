@@ -15,7 +15,7 @@ on:
       - "step-06-code-translation/**"
 
 concurrency:
-  group: step-6-progress
+  group: step-6-progress-${{ github.event.pull_request.merge_commit_sha || github.sha }}
   cancel-in-progress: true
 
 permissions:

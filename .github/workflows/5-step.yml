@@ -15,7 +15,7 @@ on:
       - "step-05-documentation-generation/**"
 
 concurrency:
-  group: step-5-progress
+  group: step-5-progress-${{ github.event.pull_request.merge_commit_sha || github.sha }}
   cancel-in-progress: true
 
 permissions:

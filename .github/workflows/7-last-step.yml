@@ -15,7 +15,7 @@ on:
       - "step-07-debugging-assistance/**"
 
 concurrency:
-  group: step-7-progress
+  group: step-7-progress-${{ github.event.pull_request.merge_commit_sha || github.sha }}
   cancel-in-progress: true
 
 permissions:
