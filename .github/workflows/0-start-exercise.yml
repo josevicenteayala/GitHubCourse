@@ -42,6 +42,21 @@ jobs:
         with:
           ref: main
 
+      - name: Update README with fork owner
+        run: |
+          sed -i \
+            -e "s|josevicenteayala/GitHubCourse|${{ github.repository }}|g" \
+            -e "s|josevicenteayala|${{ github.repository_owner }}|g" \
+            -e "s|/issues/[0-9]*|/issues/${{ env.ISSUE_NUMBER }}|g" \
+            README.md
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          git diff --cached --quiet || git commit -m "Update README for fork owner ${{ github.repository_owner }}"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Get response templates
         uses: actions/checkout@v4
         with:
