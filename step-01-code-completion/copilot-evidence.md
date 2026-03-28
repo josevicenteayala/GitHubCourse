@@ -1,34 +1,16 @@
+
 # Copilot Evidence — Step 01
 
-## Prompt 1 — `normalize_username`
+Replace all placeholders.
 
-`Complete this function to normalize usernames following the rules in the docstring.`
+## Prompt 1
 
-### Copilot Suggestion
+`<paste your prompt>`
 
-```python
-name = name.strip().lower().replace(" ", "_")
-name = re.sub(r"[^a-z0-9_]", "", name)
-name = re.sub(r"_+", "_", name)
-return name.strip("_")
-```
+## Why you accepted/rejected the suggestion
 
-## Prompt 2 — `build_slug`
-
-`Complete this function to normalize usernames following the rules in the docstring.`
-
-### Copilot Suggestion
-
-```python
-title = title.lower()
-title = re.sub(r"[^a-z0-9]+", "-", title)
-return title.strip("-")
-```
-
-## Why you accepted the suggestions
-
-Both suggestions were accepted because they correctly implemented every rule described in the docstrings, using idiomatic Python with `re.sub` for clean and readable code.
+`<short note>`
 
 ## Final check
 
-No changes were needed after acceptance — the generated code satisfied all the documented rules for both functions on the first suggestion.
+`<what changed after first suggestion>`
