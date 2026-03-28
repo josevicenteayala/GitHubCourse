@@ -27,4 +27,6 @@ def build_slug(title: str) -> str:
     - Replace any sequence of non-alphanumeric characters with a single '-'.
     - Strip leading/trailing '-'.
     """
-    raise NotImplementedError("Implement with Copilot code completion")
+    title = title.lower()
+    title = re.sub(r"[^a-z0-9]+", "-", title)
+    return title.strip("-")
