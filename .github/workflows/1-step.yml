@@ -2,6 +2,10 @@ name: Step 1
 
 on:
   workflow_dispatch:
+  workflow_run:
+    workflows: ["Step 0"]
+    types: [completed]
+    branches: [main]
   push:
     branches:
       - main
@@ -16,7 +20,7 @@ on:
       - "step-01-code-completion/**"
 
 concurrency:
-  group: step-1-progress-${{ github.event.pull_request.merge_commit_sha || github.sha }}
+  group: step-1-progress-${{ github.event.pull_request.merge_commit_sha || github.event.workflow_run.head_sha || github.sha }}
   cancel-in-progress: true
 
 permissions:
@@ -29,7 +33,11 @@ env:
 
 jobs:
   find_exercise:
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+    if: |
+      github.event_name == 'push' || 
+      github.event_name == 'workflow_dispatch' || 
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      github.event.pull_request.merged == true
     name: Find Exercise Issue
     uses: skills/exercise-toolkit/.github/workflows/find-exercise-issue.yml@v0.8.1
 
@@ -44,6 +52,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -129,6 +139,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Get response templates
         uses: actions/checkout@v4
