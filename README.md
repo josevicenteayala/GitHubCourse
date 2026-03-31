@@ -12,5 +12,11 @@ Remember, it's self-paced so feel free to take a break! ☕️
 
 ---
 
+### 🏫 Instructors
+
+Want to use this course in your classroom? See the **[Classroom Setup Guide](CLASSROOM_SETUP.md)** for step-by-step instructions on creating a GitHub Classroom assignment from this template.
+
+---
+
 &copy; 2025 GitHub &bull; [Code of Conduct](https://www.contributor-covenant.org/version/2/1/code_of_conduct/code_of_conduct.md) &bull; [MIT License](https://gh.io/mit)
 
