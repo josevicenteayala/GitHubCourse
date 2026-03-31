@@ -65,7 +65,7 @@ GitHub Classroom requires an organization. If you do not already have one:
 
 ### Select the Template Repository
 
-4. In the **Add a template repository** search box, search for this repository name (e.g., `josevicenteayala/GitHubCourse`).
+4. In the **Add a template repository** search box, search for your fork or copy of this repository (e.g., `your-org/GitHubCourse`).
 5. Select it from the results.
 6. Click **Continue**.
 
